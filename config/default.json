@@ -1,3 +1,5 @@
 {
-  "mongoURI": "mongodb+srv://mirvine:RssJBQ6XQmZa5dQ7@devconnect-tibj4.mongodb.net/test?retryWrites=true&w=majority"
+  "mongoURI": "mongodb+srv://mirvine:RssJBQ6XQmZa5dQ7@devconnect-tibj4.mongodb.net/test?retryWrites=true&w=majority",
+  "jwtSecret": "secretcode",
+  "githubToken": "66ffad86046d84ab16211a9e288d2699fb19621f"
 }
