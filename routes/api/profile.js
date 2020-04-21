@@ -4,9 +4,11 @@ const auth = require('../../middleware/auth');
 const config = require('config');
 const axios = require('axios');
 const { check, validationResult } = require('express-validator');
+const normalize = require('normalize-url');
 // Models/Schemas
 const User = require('../../models/Users');
 const Profile = require('../../models/Profile');
+const Post = require('../../models/Post');
 
 // @Route GET api/profile/me
 // @desc Get Current Users Profile
@@ -62,24 +64,27 @@ router.post(
       facebook,
     } = req.body;
 
-    const profileFields = {};
-    profileFields.user = req.user.id;
+    const profileFields = {
+      user: req.user.id,
+      company,
+      location,
+      website: website === '' ? '' : normalize(website, { forceHttps: true }),
+      bio,
+      skills: Array.isArray(skills)
+        ? skills
+        : skills.split(',').map((skill) => ' ' + skill.trim()),
+      status,
+      githubusername,
+    };
 
-    if (company) profileFields.company = company;
-    if (website) profileFields.website = website;
-    if (location) profileFields.location = location;
-    if (bio) profileFields.bio = bio;
-    if (githubusername) profileFields.githubusername = githubusername;
-    if (status) profileFields.status = status;
-    if (skills)
-      profileFields.skills = skills.split(',').map((skill) => skill.trim());
+    // Build social object and add to profileFields
+    const socialfields = { youtube, twitter, instagram, linkedin, facebook };
 
-    profileFields.social = {};
-    if (youtube) profileFields.social.youtube = youtube;
-    if (facebook) profileFields.social.facebook = facebook;
-    if (twitter) profileFields.social.twitter = twitter;
-    if (linkedin) profileFields.social.linkedin = linkedin;
-    if (instagram) profileFields.social.instagram = instagram;
+    for (const [key, value] of Object.entries(socialfields)) {
+      if (value && value.length > 0)
+        socialfields[key] = normalize(value, { forceHttps: true });
+    }
+    profileFields.social = socialfields;
 
     try {
       let profile = await Profile.findOne({ user: req.user.id });
@@ -111,10 +116,7 @@ router.post(
 
 router.get('/', async (req, res) => {
   try {
-    const profiles = await Profile.find({ user: req.user.id }).populate(
-      'user',
-      ['name', 'avatar']
-    );
+    const profiles = await Profile.find().populate('user', ['name', 'avatar']);
     res.json(profiles);
   } catch (error) {
     console.error(error.message);
@@ -323,7 +325,8 @@ router.get('/github/:username', async (req, res) => {
 // @access Private
 router.delete('/', auth, async (req, res) => {
   try {
-    // @todo - remove users posts
+    // Remove Users Posts
+    await Post.deleteMany({ user: req.user.id });
     // Remove profile
     await Profile.findOneAndRemove({ user: req.user.id });
     // Remove user
